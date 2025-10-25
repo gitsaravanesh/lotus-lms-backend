@@ -27,7 +27,7 @@ def lambda_handler(event, context):
     method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
 
     try:
-        # GET /courses
+        # GET /courses steps
         if method == "GET" and path == "/courses":
             result = table.query(
                 KeyConditionExpression=Key("tenant_id").eq(tenant_id)
