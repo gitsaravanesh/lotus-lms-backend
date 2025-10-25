@@ -1,0 +1,38 @@
+name: Build & Upload Lambda
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies and package
+        run: |
+          cd lambda
+          pip install -r requirements.txt -t package/
+          cp handler.py package/
+          cd package
+          zip -r ../../list_courses.zip .
+          cd ../..
+
+      - name: Upload to S3
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Push zip to S3
+        run: |
+          aws s3 cp list_courses.zip s3://${{ secrets.LAMBDA_BUCKET_NAME }}/${{ secrets.LAMBDA_S3_KEY || 'list_courses.zip' }}
