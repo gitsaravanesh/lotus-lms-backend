@@ -2,7 +2,7 @@ import os
 import json
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
-        # re-run re-run
+        # re-run
 dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ.get("COURSES_TABLE", "lms-courses")
 table = dynamodb.Table(TABLE_NAME)
