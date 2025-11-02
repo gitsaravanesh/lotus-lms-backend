@@ -40,6 +40,6 @@ jobs:
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
-            --function-name lms-list-courses \
+            --function-name lms-infra-list-courses \
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key list_courses.zip
