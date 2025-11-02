@@ -35,4 +35,4 @@ jobs:
 
       - name: Push zip to S3
         run: |
-          aws s3 cp list_courses.zip s3://lambda-artifacts/lambda/list_courses.zip || 'list_courses.zip' }}
+          aws s3 cp list_courses.zip s3://lambda-artifacts/lambda/list_courses.zip
