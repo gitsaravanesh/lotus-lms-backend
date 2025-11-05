@@ -17,23 +17,27 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies and package (list_courses)
+      - name: Install dependencies and package both Lambdas
         run: |
           cd lambda
+          
+          echo "📦 Packaging list_courses Lambda..."
           pip install -r requirements.txt -t package/
           cp handler.py package/
           cd package
           zip -r ../../list_courses.zip .
-          cd ../..
-
-      - name: Package create_order Lambda
-        run: |
-          mkdir -p lambda_packages
-          cp lambda_create_order.py lambda_packages/
-          cd lambda_packages
-          zip -r ../create_order.zip lambda_create_order.py
           cd ..
-          echo "✅ create_order.zip created"
+          rm -rf package
+
+          echo "📦 Packaging create_order Lambda..."
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp ../lambda_create_order.py package/
+          cd package
+          zip -r ../../create_order.zip .
+          cd ../..
+          
+          echo "✅ Both Lambdas packaged successfully!"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,14 +46,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Push list_courses.zip to S3
+      - name: Push both Lambda zips to S3
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
-
-      - name: Push create_order.zip to S3
-        run: |
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
-          echo "✅ Uploaded create_order.zip to S3"
+          echo "✅ Uploaded both Lambda packages to S3"
 
       - name: Update list_courses Lambda
         run: |
