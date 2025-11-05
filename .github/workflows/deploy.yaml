@@ -22,6 +22,7 @@ jobs:
           cd lambda
           
           echo "📦 Packaging list_courses Lambda..."
+          mkdir -p package          
           pip install -r requirements.txt -t package/
           cp handler.py package/
           cd package
@@ -32,7 +33,7 @@ jobs:
           echo "📦 Packaging create_order Lambda..."
           mkdir -p package
           pip install -r requirements.txt -t package/
-          cp ../lambda_create_order.py package/
+          cp lambda_create_order.py package/
           cd package
           zip -r ../../create_order.zip .
           cd ../..
