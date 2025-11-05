@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies and package
+      - name: Install dependencies and package (list_courses)
         run: |
           cd lambda
           pip install -r requirements.txt -t package/
@@ -26,20 +26,42 @@ jobs:
           zip -r ../../list_courses.zip .
           cd ../..
 
-      - name: Upload to S3
+      - name: Package create_order Lambda
+        run: |
+          mkdir -p lambda_packages
+          cp lambda_create_order.py lambda_packages/
+          cd lambda_packages
+          zip -r ../create_order.zip lambda_create_order.py
+          cd ..
+          echo "✅ create_order.zip created"
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Push zip to S3
+      - name: Push list_courses.zip to S3
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
-      
-      - name: Update Lambda function code
+
+      - name: Push create_order.zip to S3
+        run: |
+          aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
+          echo "✅ Uploaded create_order.zip to S3"
+
+      - name: Update list_courses Lambda
         run: |
           aws lambda update-function-code \
             --function-name lms-infra-list-courses \
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/list_courses.zip
+
+      - name: Update create_order Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-create-order \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/create_order.zip
+          echo "✅ Lambda lms-infra-create-order updated successfully"
