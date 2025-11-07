@@ -2,7 +2,8 @@ import os
 import json
 import boto3
 import base64
-import requests
+import urllib.request
+import urllib.error
 from boto3.dynamodb.conditions import Key
 
 # Initialize DynamoDB
@@ -45,23 +46,25 @@ def lambda_handler(event, context):
             "receipt": f"{tenant_id}-{course_id}",
         }
 
-        response = requests.post(
+        # Create request with urllib (built-in, no external dependencies)
+        req = urllib.request.Request(
             razorpay_url,
+            data=json.dumps(payload).encode('utf-8'),
             headers={
                 "Authorization": f"Basic {auth_header}",
                 "Content-Type": "application/json",
-            },
-            data=json.dumps(payload),
+            }
         )
 
-        if response.status_code != 200:
-            print("Razorpay error:", response.text)
-            return _response(500, {"error": "Failed to create order", "details": response.text})
-
-        order = response.json()
-        print("Order created:", order)
-
-        return _response(200, order)
+        try:
+            with urllib.request.urlopen(req) as response:
+                order = json.loads(response.read().decode('utf-8'))
+                print("Order created:", order)
+                return _response(200, order)
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8')
+            print("Razorpay error:", error_body)
+            return _response(500, {"error": "Failed to create order", "details": error_body})
 
     except Exception as e:
         print("Error:", str(e))
