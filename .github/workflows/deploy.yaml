@@ -39,6 +39,7 @@ jobs:
           cd ../..
           rm -rf lambda/package
 
+          pwd
           echo "📦 Packaging list_videos Lambda..."
           mkdir -p package
           pip install -r requirements.txt -t package/
