@@ -37,6 +37,15 @@ jobs:
           cd package
           zip -r ../../create_order.zip .
           cd ../..
+          rm -rf lambda/package
+
+          echo "📦 Packaging list_videos Lambda..."
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp list_videos.py package/
+          cd package
+          zip -r ../../list_videos.zip .
+          cd ../..
           
           echo "✅ Both Lambdas packaged successfully!"
 
@@ -67,3 +76,11 @@ jobs:
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/create_order.zip
           echo "✅ Lambda lms-infra-create-order updated successfully"
+
+      - name: List Videos Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-list-videos \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/list_videos.zip
+          echo "✅ Lambda lms-infra-list-videos updated successfully"
