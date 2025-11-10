@@ -36,7 +36,7 @@ jobs:
           cp lambda_create_order.py package/
           cd package
           zip -r ../../create_order.zip .
-          cd ../..
+          cd ..
           rm -rf lambda/package
 
           pwd
