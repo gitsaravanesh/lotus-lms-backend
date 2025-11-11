@@ -61,6 +61,7 @@ jobs:
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
+          aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
           echo "✅ Uploaded both Lambda packages to S3"
 
       - name: Update list_courses Lambda
