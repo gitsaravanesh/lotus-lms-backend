@@ -4,7 +4,7 @@ import logging
 from decimal import Decimal
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
-
+#re-run
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
