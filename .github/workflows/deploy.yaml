@@ -20,7 +20,6 @@ jobs:
       - name: Install dependencies and package both Lambdas
         run: |
           cd lambda
-          pwd
           echo "📦 Packaging list_courses Lambda..."
           mkdir -p package          
           pip install -r requirements.txt -t package/
@@ -39,7 +38,6 @@ jobs:
           cd ..
           rm -rf lambda/package
 
-          pwd
           echo "📦 Packaging list_videos Lambda..."
           mkdir -p package
           pip install -r requirements.txt -t package/
