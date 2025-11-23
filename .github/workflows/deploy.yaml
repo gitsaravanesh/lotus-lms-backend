@@ -99,7 +99,7 @@ jobs:
       - name: Update Transaction Lambda
         run: |
           aws lambda update-function-code \
-            --function-name lms-infra-update-transaction \
+            --function-name lms-infra-update-transactions \
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/update_transaction.zip
           echo "✅ Lambda lms-infra-update-transaction updated successfully"          
