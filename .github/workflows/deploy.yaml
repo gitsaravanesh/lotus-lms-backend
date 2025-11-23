@@ -44,7 +44,8 @@ jobs:
           cp list_videos.py package/
           cd package
           zip -r ../../list_videos.zip .
-          cd ../..
+          cd ..
+          rm -rf lambda/package
 
           pwd
           echo "📦 Packaging transaction Lambda..."
