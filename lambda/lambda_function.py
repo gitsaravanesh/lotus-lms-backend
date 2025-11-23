@@ -4,6 +4,7 @@ import boto3
 import logging
 from datetime import datetime
 from decimal import Decimal
+from botocore.exceptions import ClientError
 
 # Configure logging
 logger = logging.getLogger()
@@ -165,12 +166,18 @@ def lambda_handler(event, context):
                 ConditionExpression='attribute_not_exists(transaction_id)'
             )
             logger.info("Transaction stored successfully: %s", razorpay_payment_id)
-        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-            # Transaction already exists - this is okay, just update the timestamp
-            logger.warning("Transaction already exists, updating: %s", razorpay_payment_id)
-            item['updated_at'] = datetime.utcnow().isoformat() + "Z"
-            table.put_item(Item=item)
-            logger.info("Transaction updated successfully: %s", razorpay_payment_id)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                # Transaction already exists - this is okay, just update the timestamp
+                logger.warning("Transaction already exists, updating: %s", razorpay_payment_id)
+                item['updated_at'] = datetime.utcnow().isoformat() + "Z"
+                table.put_item(Item=item)
+                logger.info("Transaction updated successfully: %s", razorpay_payment_id)
+            else:
+                logger.error("DynamoDB error: %s", str(e), exc_info=True)
+                return build_response(500, {
+                    "error": "Failed to store transaction in database"
+                })
         except Exception as e:
             logger.error("DynamoDB error: %s", str(e), exc_info=True)
             return build_response(500, {

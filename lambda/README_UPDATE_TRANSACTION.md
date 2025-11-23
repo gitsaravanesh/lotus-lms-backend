@@ -107,19 +107,21 @@ This Lambda function:
 
 ```json
 {
-  "error": "Failed to store transaction in database",
-  "details": "ResourceNotFoundException: Requested resource not found"
+  "error": "Failed to store transaction in database"
 }
 ```
+
+Note: Detailed error information is logged to CloudWatch but not exposed in the API response for security reasons.
 
 #### Internal Server Error (500) - Unexpected Error
 
 ```json
 {
-  "error": "Internal server error",
-  "details": "Error message details"
+  "error": "Internal server error"
 }
 ```
+
+Note: Detailed error information is logged to CloudWatch but not exposed in the API response for security reasons.
 
 ## DynamoDB Table Structure
 
