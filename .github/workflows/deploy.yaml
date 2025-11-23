@@ -47,6 +47,15 @@ jobs:
           cd package
           zip -r ../../list_videos.zip .
           cd ../..
+
+          pwd
+          echo "📦 Packaging transaction Lambda..."
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp update_transaction.py package/
+          cd package
+          zip -r ../../update_transaction.zip .
+          cd ../..
           
           echo "✅ Both Lambdas packaged successfully!"
 
@@ -62,6 +71,7 @@ jobs:
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
           aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
+          aws s3 cp update_transaction.zip s3://lms-infra-lambda-artifacts/lambda/update_transaction.zip
           echo "✅ Uploaded both Lambda packages to S3"
 
       - name: Update list_courses Lambda
@@ -86,3 +96,11 @@ jobs:
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/list_videos.zip
           echo "✅ Lambda lms-infra-list-videos updated successfully"
+
+      - name: Update Transaction Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-update-transaction \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/update_transaction.zip
+          echo "✅ Lambda lms-infra-update-transaction updated successfully"          
