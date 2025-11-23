@@ -2,7 +2,7 @@ import os
 import json
 import boto3
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ----------------------------
 # DynamoDB setup
@@ -112,7 +112,7 @@ def lambda_handler(event, context):
             })
         
         # Prepare transaction item
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         transaction_item = {
             "transaction_id": razorpay_payment_id,
             "razorpay_payment_id": razorpay_payment_id,
@@ -132,7 +132,7 @@ def lambda_handler(event, context):
             if field in body and body[field] is not None:
                 value = body[field]
                 # Convert amount to Decimal if provided
-                if field == "amount" and value is not None:
+                if field == "amount":
                     try:
                         value = Decimal(str(value))
                     except (ValueError, TypeError) as e:
