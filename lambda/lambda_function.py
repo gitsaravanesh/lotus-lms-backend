@@ -29,11 +29,14 @@ class DecimalEncoder(json.JSONEncoder):
 
 def build_response(status_code: int, body: dict):
     """Standard API Gateway response with CORS headers."""
+    # Get allowed origin from environment variable or default to * for development
+    # In production, this should be set to specific domains
+    allowed_origin = os.environ.get("CORS_ALLOWED_ORIGIN", "*")
     return {
         "statusCode": status_code,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": allowed_origin,
             "Access-Control-Allow-Methods": "POST,OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type,X-Tenant-Id,Authorization",
         },
@@ -155,13 +158,23 @@ def lambda_handler(event, context):
         # Store in DynamoDB
         try:
             logger.info("Storing transaction in DynamoDB: %s", razorpay_payment_id)
-            table.put_item(Item=item)
+            # Use ConditionExpression to prevent accidental overwrites of existing transactions
+            # This will fail if the transaction_id already exists
+            table.put_item(
+                Item=item,
+                ConditionExpression='attribute_not_exists(transaction_id)'
+            )
             logger.info("Transaction stored successfully: %s", razorpay_payment_id)
+        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+            # Transaction already exists - this is okay, just update the timestamp
+            logger.warning("Transaction already exists, updating: %s", razorpay_payment_id)
+            item['updated_at'] = datetime.utcnow().isoformat() + "Z"
+            table.put_item(Item=item)
+            logger.info("Transaction updated successfully: %s", razorpay_payment_id)
         except Exception as e:
-            logger.error("DynamoDB error: %s", str(e))
+            logger.error("DynamoDB error: %s", str(e), exc_info=True)
             return build_response(500, {
-                "error": "Failed to store transaction in database",
-                "details": str(e)
+                "error": "Failed to store transaction in database"
             })
         
         # Return success response
@@ -176,8 +189,7 @@ def lambda_handler(event, context):
         return build_response(200, response_data)
         
     except Exception as e:
-        logger.exception("Unexpected error processing transaction update")
+        logger.exception("Unexpected error processing transaction update: %s", str(e))
         return build_response(500, {
-            "error": "Internal server error",
-            "details": str(e)
+            "error": "Internal server error"
         })

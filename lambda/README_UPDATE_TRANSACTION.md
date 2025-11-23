@@ -149,6 +149,7 @@ This Lambda function:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TRANSACTIONS_TABLE` | No | `lms-transactions` | DynamoDB table name for transactions |
+| `CORS_ALLOWED_ORIGIN` | No | `*` | Allowed origin for CORS (use specific domain in production) |
 
 ## IAM Permissions Required
 
@@ -328,10 +329,11 @@ Monitor the Lambda function using:
 ## Security Considerations
 
 1. **Input Validation**: All inputs are validated before processing
-2. **Error Messages**: Avoid exposing sensitive information in error messages
+2. **Error Messages**: Sensitive infrastructure details are not exposed in API responses (only logged to CloudWatch)
 3. **IAM Permissions**: Follow principle of least privilege
 4. **Logging**: Avoid logging sensitive payment information
-5. **CORS**: Configure appropriate origins in production (not `*`)
+5. **CORS**: Configure `CORS_ALLOWED_ORIGIN` environment variable with specific domain(s) in production (default `*` is for development only)
+6. **Duplicate Prevention**: The function uses conditional expressions to prevent accidental overwrites of existing transactions
 
 ## Troubleshooting
 
