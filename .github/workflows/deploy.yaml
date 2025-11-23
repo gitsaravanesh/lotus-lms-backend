@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies and package both Lambdas
+      - name: Install dependencies and package all Lambdas
         run: |
           cd lambda
           
@@ -37,18 +37,26 @@ jobs:
           cd package
           zip -r ../../create_order.zip .
           cd ..
-          rm -rf lambda/package
+          rm -rf package
 
-          pwd
           echo "📦 Packaging list_videos Lambda..."
           mkdir -p package
           pip install -r requirements.txt -t package/
           cp list_videos.py package/
           cd package
           zip -r ../../list_videos.zip .
+          cd ..
+          rm -rf package
+
+          echo "📦 Packaging update_transaction Lambda..."
+          mkdir -p package
+          pip install -r lambda_function_requirements.txt -t package/
+          cp lambda_function.py package/
+          cd package
+          zip -r ../../update_transaction.zip .
           cd ../..
           
-          echo "✅ Both Lambdas packaged successfully!"
+          echo "✅ All Lambdas packaged successfully!"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,12 +65,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Push both Lambda zips to S3
+      - name: Push all Lambda zips to S3
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
           aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
-          echo "✅ Uploaded both Lambda packages to S3"
+          aws s3 cp update_transaction.zip s3://lms-infra-lambda-artifacts/lambda/update_transaction.zip
+          echo "✅ Uploaded all Lambda packages to S3"
 
       - name: Update list_courses Lambda
         run: |
@@ -79,10 +88,18 @@ jobs:
             --s3-key lambda/create_order.zip
           echo "✅ Lambda lms-infra-create-order updated successfully"
 
-      - name: List Videos Lambda
+      - name: Update list_videos Lambda
         run: |
           aws lambda update-function-code \
             --function-name lms-infra-list-videos \
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/list_videos.zip
           echo "✅ Lambda lms-infra-list-videos updated successfully"
+
+      - name: Update update_transaction Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-update-transaction \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/update_transaction.zip
+          echo "✅ Lambda lms-infra-update-transaction updated successfully"
