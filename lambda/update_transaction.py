@@ -53,7 +53,7 @@ def lambda_handler(event, context):
     - amount (optional): Payment amount
     - currency (optional): Currency code (default: INR)
     - user_id (optional): User ID
-    - course_id (optional): Course ID
+    - course_id (required): Course ID
     - email (optional): User email
     - phone (optional): User phone number
     - razorpay_signature (optional): Razorpay signature for verification
@@ -95,6 +95,7 @@ def lambda_handler(event, context):
         razorpay_payment_id = body.get("razorpay_payment_id")
         razorpay_order_id = body.get("razorpay_order_id")
         status = body.get("status")
+        course_id = body.get("course_id")
         
         missing_fields = []
         if not razorpay_payment_id:
@@ -103,6 +104,8 @@ def lambda_handler(event, context):
             missing_fields.append("razorpay_order_id")
         if not status:
             missing_fields.append("status")
+        if not course_id:
+            missing_fields.append("course_id")
         
         if missing_fields:
             print(f"Missing required fields: {missing_fields}")
@@ -127,13 +130,14 @@ def lambda_handler(event, context):
             "razorpay_payment_id": razorpay_payment_id,
             "razorpay_order_id": razorpay_order_id,
             "status": status,
+            "course_id": course_id,
             "created_at": timestamp,
             "updated_at": timestamp,
         }
         
         # Add optional fields if provided
         optional_fields = [
-            "amount", "currency", "user_id", "course_id", 
+            "amount", "currency", "user_id",
             "email", "phone", "razorpay_signature"
         ]
         
