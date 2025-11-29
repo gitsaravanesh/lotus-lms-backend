@@ -82,7 +82,15 @@ def lambda_handler(event, context):
                     "error": "Invalid JSON format",
                     "details": str(e)
                 })
-        
+                
+        tenant_id = event.get("headers", {}).get("X-Tenant-Id") or event.get("headers", {}).get("x-tenant-id")
+
+        if not tenant_id:
+            print("Missing tenant_id in headers")
+            return response(400, {
+                "error": "Missing required header",
+                "details": "X-Tenant-Id header is required"
+            })
         # Validate required fields
         razorpay_payment_id = body.get("razorpay_payment_id")
         razorpay_order_id = body.get("razorpay_order_id")
@@ -114,6 +122,7 @@ def lambda_handler(event, context):
         # Prepare transaction item
         timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         transaction_item = {
+            "tenant_id": tenant_id,
             "transaction_id": razorpay_payment_id,
             "razorpay_payment_id": razorpay_payment_id,
             "razorpay_order_id": razorpay_order_id,
