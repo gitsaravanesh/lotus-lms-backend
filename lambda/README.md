@@ -314,3 +314,153 @@ Key metrics to monitor:
   - Error handling
   - CORS support
   - CloudWatch logging
+
+## get_user_tenant.py
+
+Lambda function to retrieve user-tenant mapping for multi-tenant support.
+
+### Endpoint
+`GET /user/tenant` or `GET /user/tenant/{user_id}`
+
+### Request Parameters
+- `user_id` (string, required): The Cognito username or email address
+
+The `user_id` can be provided either as:
+- Path parameter: `/user/tenant/{user_id}`
+- Query parameter: `/user/tenant?user_id=cloudtech.trainer@gmail.com`
+
+### Response
+
+Returns the tenant mapping for the specified user.
+
+#### Success Response (200 OK)
+```json
+{
+  "user_id": "cloudtech.trainer@gmail.com",
+  "tenant_id": "trainer1",
+  "role": "instructor",
+  "email": "cloudtech.trainer@gmail.com",
+  "created_at": "2025-01-10T10:00:00Z"
+}
+```
+
+#### Error Responses
+
+**400 Bad Request - Missing user_id parameter**
+```json
+{
+  "error": "Missing required parameter: user_id"
+}
+```
+
+**404 Not Found - User mapping not found**
+```json
+{
+  "error": "User mapping not found",
+  "user_id": "example@email.com"
+}
+```
+
+**500 Internal Server Error - DynamoDB or other errors**
+```json
+{
+  "error": "Internal server error",
+  "details": "error message"
+}
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| USER_TENANT_TABLE | lms-user-tenant-mapping | Name of the DynamoDB table for user-tenant mappings |
+
+### DynamoDB Schema
+
+**Table Name**: `lms-user-tenant-mapping`  
+**Primary Key**: `user_id` (String)
+
+#### Attributes
+| Attribute | Type | Required | Description |
+|-----------|------|----------|-------------|
+| user_id | String | Yes | Primary key, Cognito username or email |
+| tenant_id | String | Yes | Tenant identifier |
+| role | String | Yes | User role (e.g., instructor, student, admin) |
+| email | String | Yes | User email address |
+| created_at | String | Yes | ISO 8601 timestamp when record was created |
+
+### CORS Configuration
+
+The Lambda function includes CORS headers to support frontend integration:
+
+- **Access-Control-Allow-Origin**: `*` (allows all origins)
+- **Access-Control-Allow-Methods**: `GET,OPTIONS`
+- **Access-Control-Allow-Headers**: `Content-Type,X-Tenant-Id,Authorization`
+
+The function handles OPTIONS requests for CORS preflight.
+
+### Example Usage
+
+#### Using Query Parameter
+```bash
+curl -X GET "https://your-api-gateway-url/user/tenant?user_id=cloudtech.trainer@gmail.com"
+```
+
+#### Using Path Parameter
+```bash
+curl -X GET "https://your-api-gateway-url/user/tenant/cloudtech.trainer@gmail.com"
+```
+
+### IAM Permissions Required
+
+The Lambda function requires the following IAM permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem"
+      ],
+      "Resource": "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/lms-user-tenant-mapping"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/lms-get-user-tenant:*"
+    }
+  ]
+}
+```
+
+### Logging
+
+All operations are logged to CloudWatch Logs:
+- Incoming event details
+- User ID being queried
+- Query results or errors
+- Error messages with stack traces
+
+### Error Handling
+
+The function implements comprehensive error handling:
+
+1. **Missing user_id**: Returns 400 with error message
+2. **User Not Found**: Returns 404 with user_id in response
+3. **DynamoDB Errors**: Returns 500 with error details
+4. **Unexpected Errors**: Returns 500 with error message
+
+### Testing Considerations
+
+Test the Lambda function with:
+- Valid user_id (should return 200 with user mapping)
+- Missing user_id (should return 400)
+- Non-existent user_id (should return 404)
+- CORS preflight OPTIONS request (should return 200)
+- Verify proper error messages and status codes
