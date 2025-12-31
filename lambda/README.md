@@ -464,3 +464,251 @@ Test the Lambda function with:
 - Non-existent user_id (should return 404)
 - CORS preflight OPTIONS request (should return 200)
 - Verify proper error messages and status codes
+
+## cognito_post_confirmation.py
+
+### Overview
+Lambda function triggered by Cognito Post Confirmation event to automatically provision user records in DynamoDB tables when a new user signs up and confirms their email.
+
+**Function Name**: `lms-infra-cognito-post-confirmation`  
+**Handler**: `cognito_post_confirmation.lambda_handler`  
+**Trigger Type**: Cognito Post Confirmation  
+**DynamoDB Tables**: 
+- `lotus-lms-users` (user profile table)
+- `lms-user-tenant-mapping` (user-tenant relationship table)
+
+### Trigger Event
+
+This Lambda function is triggered automatically by AWS Cognito after a user confirms their signup/email. The function receives a Cognito Post Confirmation trigger event.
+
+#### Input Event Structure
+```json
+{
+  "version": "1",
+  "triggerSource": "PostConfirmation_ConfirmSignUp",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_XXXXXXXXX",
+  "userName": "user-sub-id",
+  "request": {
+    "userAttributes": {
+      "sub": "user-sub-id",
+      "email": "user@example.com",
+      "name": "User Name",
+      "custom:username": "username"
+    }
+  },
+  "response": {}
+}
+```
+
+#### Event Fields Used
+- **userName**: The Cognito username (sub) - used as user_id
+- **request.userAttributes.email**: User's email address
+- **request.userAttributes.name**: User's full name (optional)
+- **request.userAttributes['custom:username']**: Custom username attribute (optional, defaults to email if not provided)
+
+### DynamoDB Operations
+
+The function performs two write operations to provision the new user:
+
+#### Table 1: lotus-lms-users
+
+Inserts a user profile record with the following attributes:
+
+| Attribute | Type | Source | Description |
+|-----------|------|--------|-------------|
+| user_id | String | event['userName'] | Cognito username (sub) - Primary Key |
+| email | String | userAttributes['email'] | User's email address |
+| username | String | userAttributes['custom:username'] or email | Username (fallback to email) |
+| full_name | String | userAttributes['name'] | User's full name (empty string if not provided) |
+| created_at | String | Generated | ISO 8601 timestamp (UTC) |
+| status | String | Hardcoded | "active" |
+
+#### Table 2: lms-user-tenant-mapping
+
+Inserts a user-tenant mapping record with the following attributes:
+
+| Attribute | Type | Source | Description |
+|-----------|------|--------|-------------|
+| user_id | String | event['userName'] | Cognito username (sub) - Primary Key |
+| tenant_id | String | Hardcoded | "trainer1" (default tenant for new signups) |
+| role | String | Hardcoded | "student" (default role for new signups) |
+| email | String | userAttributes['email'] | User's email address |
+| created_at | String | Generated | ISO 8601 timestamp (UTC) |
+
+### Response
+
+The function **must** return the original event object unchanged. This is required by Cognito to complete the signup flow.
+
+```json
+{
+  "version": "1",
+  "triggerSource": "PostConfirmation_ConfirmSignUp",
+  "region": "us-east-1",
+  "userPoolId": "us-east-1_XXXXXXXXX",
+  "userName": "user-sub-id",
+  "request": {
+    "userAttributes": {
+      "sub": "user-sub-id",
+      "email": "user@example.com",
+      "name": "User Name",
+      "custom:username": "username"
+    }
+  },
+  "response": {}
+}
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| USERS_TABLE | lotus-lms-users | Name of the DynamoDB table for user profiles |
+| USER_TENANT_MAPPING_TABLE | lms-user-tenant-mapping | Name of the DynamoDB table for user-tenant mappings |
+
+### Error Handling
+
+The function implements graceful error handling to ensure user signup is never blocked by database failures:
+
+1. **Separate Try-Catch Blocks**: Each DynamoDB operation (users table and tenant mapping table) has its own try-catch block
+2. **Error Logging**: All errors are logged to CloudWatch with detailed stack traces
+3. **Non-Blocking Failures**: If one table write fails, the function still attempts to write to the other table
+4. **Event Return**: The function always returns the original event, even if database operations fail
+5. **Signup Flow Protection**: User signup in Cognito completes successfully even if DynamoDB operations fail
+
+This design ensures that authentication functionality is never disrupted by backend provisioning issues.
+
+### Logging
+
+All operations are logged to CloudWatch Logs:
+- Complete incoming Cognito event (JSON format)
+- User data extraction details
+- DynamoDB write operations with full item data
+- Success confirmations for each table write
+- Detailed error messages with stack traces for any failures
+
+CloudWatch log group: `/aws/lambda/lms-infra-cognito-post-confirmation`
+
+### IAM Permissions Required
+
+The Lambda function requires the following IAM permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/lotus-lms-users",
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/lms-user-tenant-mapping"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/aws/lambda/lms-infra-cognito-post-confirmation:*"
+    }
+  ]
+}
+```
+
+### Deployment
+
+1. Ensure the Lambda function `lms-infra-cognito-post-confirmation` is created via Terraform
+2. Configure Cognito User Pool to trigger this Lambda on Post Confirmation:
+   ```bash
+   aws cognito-idp update-user-pool \
+     --user-pool-id us-east-1_XXXXXXXXX \
+     --lambda-config PostConfirmation=arn:aws:lambda:REGION:ACCOUNT_ID:function:lms-infra-cognito-post-confirmation
+   ```
+3. Grant Cognito permission to invoke the Lambda:
+   ```bash
+   aws lambda add-permission \
+     --function-name lms-infra-cognito-post-confirmation \
+     --statement-id CognitoTrigger \
+     --action lambda:InvokeFunction \
+     --principal cognito-idp.amazonaws.com \
+     --source-arn arn:aws:cognito-idp:REGION:ACCOUNT_ID:userpool/us-east-1_XXXXXXXXX
+   ```
+
+### Testing Considerations
+
+After deployment, test the Lambda function by:
+
+1. **Sign Up New User**: Create a new user through Cognito signup flow
+2. **Verify Email Confirmation**: Confirm the user's email address
+3. **Check DynamoDB Tables**: 
+   - Verify a record was created in `lotus-lms-users` table with the correct user_id
+   - Verify a record was created in `lms-user-tenant-mapping` table with tenant_id "trainer1" and role "student"
+4. **Check CloudWatch Logs**: Review logs for successful execution and no errors
+5. **Test Error Handling**: 
+   - Temporarily remove DynamoDB permissions to verify signup still completes
+   - Check that errors are logged but signup flow isn't blocked
+6. **Verify User Can Login**: Ensure the newly created user can successfully log in
+
+### Example CloudWatch Log Output
+
+Successful execution:
+```
+Post Confirmation Event: {"version": "1", "triggerSource": "PostConfirmation_ConfirmSignUp", ...}
+Creating user record in lotus-lms-users: {'user_id': 'abc-123-def', 'email': 'user@example.com', ...}
+Successfully created user record for abc-123-def
+Creating tenant mapping in lms-user-tenant-mapping: {'user_id': 'abc-123-def', 'tenant_id': 'trainer1', ...}
+Successfully created tenant mapping for abc-123-def
+```
+
+Error scenario (with graceful handling):
+```
+Post Confirmation Event: {"version": "1", "triggerSource": "PostConfirmation_ConfirmSignUp", ...}
+Creating user record in lotus-lms-users: {'user_id': 'abc-123-def', 'email': 'user@example.com', ...}
+Error creating user record: An error occurred (AccessDeniedException) when calling the PutItem operation
+Stack trace: Traceback (most recent call last)...
+Creating tenant mapping in lms-user-tenant-mapping: {'user_id': 'abc-123-def', 'tenant_id': 'trainer1', ...}
+Successfully created tenant mapping for abc-123-def
+```
+
+### Monitoring
+
+Monitor the Lambda function using:
+- **CloudWatch Metrics**: Invocations, errors, duration, throttles
+- **CloudWatch Logs**: Detailed execution logs for each signup
+- **DynamoDB Metrics**: Write capacity usage on both tables
+
+Key metrics to monitor:
+- Success rate of user provisioning
+- DynamoDB write latency
+- Error rate and error types
+- Concurrent executions during high signup periods
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **Missing User Attributes**
+   - Error: KeyError for missing attributes
+   - Solution: Ensure Cognito User Pool has required attributes configured (email, name, custom:username)
+
+2. **Permission Denied**
+   - Error: AccessDeniedException for DynamoDB
+   - Solution: Verify Lambda execution role has PutItem permissions for both tables
+
+3. **Table Not Found**
+   - Error: ResourceNotFoundException
+   - Solution: Verify USERS_TABLE and USER_TENANT_MAPPING_TABLE environment variables are set correctly
+
+4. **User Already Exists**
+   - Error: ConditionalCheckFailedException (if using conditional writes)
+   - Impact: Logged but doesn't block signup (user can still authenticate)
+
+5. **Lambda Not Triggered**
+   - Error: User confirms email but Lambda doesn't execute
+   - Solution: Verify Cognito User Pool Lambda trigger configuration and invoke permissions
+
