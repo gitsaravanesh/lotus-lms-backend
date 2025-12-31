@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies and package both Lambdas
+      - name: Install dependencies and package all Lambdas
         run: |
           cd lambda
           echo "📦 Packaging list_courses Lambda..."
@@ -54,9 +54,18 @@ jobs:
           cp update_transaction.py package/
           cd package
           zip -r ../../update_transaction.zip .
+          cd ..
+          rm -rf package
+
+          echo "📦 Packaging get_user_tenant Lambda..."
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp get_user_tenant.py package/
+          cd package
+          zip -r ../../get_user_tenant.zip .
           cd ../..
           
-          echo "✅ Both Lambdas packaged successfully!"
+          echo "✅ All Lambdas packaged successfully!"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -65,13 +74,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Push both Lambda zips to S3
+      - name: Push all Lambda zips to S3
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
           aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
           aws s3 cp update_transaction.zip s3://lms-infra-lambda-artifacts/lambda/update_transaction.zip
-          echo "✅ Uploaded both Lambda packages to S3"
+          aws s3 cp get_user_tenant.zip s3://lms-infra-lambda-artifacts/lambda/get_user_tenant.zip
+          echo "✅ Uploaded all Lambda packages to S3"
 
       - name: Update list_courses Lambda
         run: |
@@ -103,3 +113,11 @@ jobs:
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/update_transaction.zip
           echo "✅ Lambda lms-infra-update-transaction updated successfully"          
+
+      - name: Update get_user_tenant Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-get-user-tenant \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/get_user_tenant.zip
+          echo "✅ Lambda lms-infra-get-user-tenant updated successfully"
