@@ -101,13 +101,11 @@ def lambda_handler(event, context):
         except Exception as db_error:
             print(f"DynamoDB error: {str(db_error)}")
             return response(500, {
-                "error": "Internal server error",
-                "details": str(db_error)
+                "error": "Internal server error"
             })
         
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         return response(500, {
-            "error": "Internal server error",
-            "details": str(e)
+            "error": "Internal server error"
         })

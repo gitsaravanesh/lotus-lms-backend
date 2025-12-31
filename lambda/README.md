@@ -364,10 +364,10 @@ Returns the tenant mapping for the specified user.
 **500 Internal Server Error - DynamoDB or other errors**
 ```json
 {
-  "error": "Internal server error",
-  "details": "error message"
+  "error": "Internal server error"
 }
 ```
+*Note: Detailed error messages are logged to CloudWatch but not exposed to clients for security reasons.*
 
 ### Environment Variables
 
