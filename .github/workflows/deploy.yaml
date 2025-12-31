@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies and package both Lambdas
+      - name: Install dependencies and package all Lambdas
         run: |
           cd lambda
           echo "📦 Packaging list_courses Lambda..."
@@ -65,7 +65,7 @@ jobs:
           zip -r ../../get_user_tenant.zip .
           cd ../..
           
-          echo "✅ Both Lambdas packaged successfully!"
+          echo "✅ All Lambdas packaged successfully!"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,14 +74,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Push both Lambda zips to S3
+      - name: Push all Lambda zips to S3
         run: |
           aws s3 cp list_courses.zip s3://lms-infra-lambda-artifacts/lambda/list_courses.zip
           aws s3 cp create_order.zip s3://lms-infra-lambda-artifacts/lambda/create_order.zip
           aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
           aws s3 cp update_transaction.zip s3://lms-infra-lambda-artifacts/lambda/update_transaction.zip
           aws s3 cp get_user_tenant.zip s3://lms-infra-lambda-artifacts/lambda/get_user_tenant.zip
-          echo "✅ Uploaded both Lambda packages to S3"
+          echo "✅ Uploaded all Lambda packages to S3"
 
       - name: Update list_courses Lambda
         run: |
