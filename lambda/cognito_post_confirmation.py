@@ -1,7 +1,8 @@
 import json
 import os
 import boto3
-from datetime import datetime
+import traceback
+from datetime import datetime, timezone
 
 
 def lambda_handler(event, context):
@@ -30,7 +31,7 @@ def lambda_handler(event, context):
     full_name = user_attrs.get('name', '')
     
     # Get current timestamp in ISO 8601 format
-    created_at = datetime.utcnow().isoformat() + 'Z'
+    created_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     
     # Get DynamoDB table names from environment variables
     users_table_name = os.environ.get('USERS_TABLE', 'lotus-lms-users')
@@ -58,7 +59,6 @@ def lambda_handler(event, context):
         
     except Exception as e:
         print(f"Error creating user record: {str(e)}")
-        import traceback
         print(f"Stack trace: {traceback.format_exc()}")
     
     # Insert user-tenant mapping into lms-user-tenant-mapping table
@@ -77,7 +77,6 @@ def lambda_handler(event, context):
         
     except Exception as e:
         print(f"Error creating tenant mapping: {str(e)}")
-        import traceback
         print(f"Stack trace: {traceback.format_exc()}")
     
     # MUST return the event for Cognito to complete the signup flow
