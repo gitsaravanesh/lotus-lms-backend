@@ -63,6 +63,15 @@ jobs:
           cp get_user_tenant.py package/
           cd package
           zip -r ../../get_user_tenant.zip .
+          cd ..
+          rm -rf package
+
+          echo "📦 Packaging cognito_post_confirmation Lambda..."
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp cognito_post_confirmation.py package/
+          cd package
+          zip -r ../../cognito_post_confirmation.zip .
           cd ../..
           
           echo "✅ All Lambdas packaged successfully!"
@@ -81,6 +90,7 @@ jobs:
           aws s3 cp list_videos.zip s3://lms-infra-lambda-artifacts/lambda/list_videos.zip
           aws s3 cp update_transaction.zip s3://lms-infra-lambda-artifacts/lambda/update_transaction.zip
           aws s3 cp get_user_tenant.zip s3://lms-infra-lambda-artifacts/lambda/get_user_tenant.zip
+          aws s3 cp cognito_post_confirmation.zip s3://lms-infra-lambda-artifacts/lambda/cognito_post_confirmation.zip
           echo "✅ Uploaded all Lambda packages to S3"
 
       - name: Update list_courses Lambda
@@ -121,3 +131,11 @@ jobs:
             --s3-bucket lms-infra-lambda-artifacts \
             --s3-key lambda/get_user_tenant.zip
           echo "✅ Lambda lms-infra-get-user-tenant updated successfully"
+
+      - name: Update cognito_post_confirmation Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name lms-infra-cognito-post-confirmation \
+            --s3-bucket lms-infra-lambda-artifacts \
+            --s3-key lambda/cognito_post_confirmation.zip
+          echo "✅ Lambda lms-infra-cognito-post-confirmation updated successfully"
